@@ -1,0 +1,21 @@
+# Environment secrets — NEVER commit real credentials
+.env
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# IDE files
+.vscode/
+.idea/

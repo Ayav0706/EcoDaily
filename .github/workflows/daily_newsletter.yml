@@ -1,0 +1,27 @@
+name: EconoDaily Newsletter
+
+on:
+  schedule:
+    - cron: '0 11 * * 1-5'  # 11:00 UTC = 06:00 Ecuador (UTC-5), Mon-Fri
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  send-newsletter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Security audit
+        run: pip install pip-audit && pip-audit -r requirements.txt
+      - name: Run pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          FROM_NAME: ${{ secrets.FROM_NAME }}
+        run: python src/main.py
