@@ -13,16 +13,14 @@ GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 )
 
-SYSTEM_INSTRUCTION = (
+_SYSTEM = (
     "Eres un economista redactor de boletines diarios. "
     "Recibes noticias crudas y produces resúmenes ejecutivos en español, "
     "estilo académico riguroso, sin inventar datos. "
-    "Si una noticia no tiene suficiente detalle, di \"Datos insuficientes para análisis\"."
+    'Si una noticia no tiene suficiente detalle, di "Datos insuficientes para análisis".'
 )
 
-PROMPT_TEMPLATE = """{system}
-
-Fecha: {date}
+_PROMPT = """Fecha: {date}
 Noticias del nivel {level} ({label}):
 {raw_items_json}
 
@@ -36,13 +34,11 @@ Responde SOLO en JSON con esta estructura:
 
 
 def build_prompt(level: NewsLevel, date: str) -> str:
-    """Build the Gemini prompt for a given level."""
     raw_items = [
         {"title": item.title, "summary": item.summary, "url": item.url}
         for item in level.items
     ]
-    return PROMPT_TEMPLATE.format(
-        system=SYSTEM_INSTRUCTION,
+    return _PROMPT.format(
         date=date,
         level=level.level,
         label=level.label,
@@ -51,8 +47,8 @@ def build_prompt(level: NewsLevel, date: str) -> str:
 
 
 async def call_gemini(prompt: str, api_key: str) -> str:
-    """Call the Gemini REST API with exponential backoff on HTTP 429."""
     body = {
+        "system_instruction": {"parts": [{"text": _SYSTEM}]},
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.3, "maxOutputTokens": 2048},
     }
