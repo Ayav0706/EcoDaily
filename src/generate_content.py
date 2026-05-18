@@ -93,39 +93,34 @@ def parse_gemini_response(raw: str) -> list[dict]:
         return []
 
 
+def _apply_enrichment(original: list[NewsItem], enriched: list[dict]) -> list[NewsItem]:
+    result = []
+    for i, item in enumerate(original):
+        if i < len(enriched):
+            d = enriched[i]
+            result.append(NewsItem(
+                title=d.get("title", item.title) or item.title,
+                summary=d.get("summary", item.summary) or item.summary,
+                url=item.url,
+                source=item.source,
+                published=item.published,
+                why_it_matters=d.get("why_it_matters", "") or "",
+            ))
+        else:
+            result.append(item)
+    return result
+
+
 async def enrich_level(level: NewsLevel, date: str, api_key: str) -> NewsLevel:
-    """Enrich level items with Gemini-generated content. Falls back to original on error."""
     if not level.items:
         return level
     try:
-        prompt = build_prompt(level, date)
-        raw = await call_gemini(prompt, api_key)
-        enriched = parse_gemini_response(raw)
+        enriched = parse_gemini_response(await call_gemini(build_prompt(level, date), api_key))
         if not enriched:
-            logger.warning("Empty Gemini response for level %s, using RSS fallback", level.level)
+            logger.warning("Empty Gemini response for %s — RSS fallback", level.level)
             return level
-
-        new_items: list[NewsItem] = []
-        for i, item in enumerate(level.items):
-            if i < len(enriched):
-                data = enriched[i]
-                new_items.append(NewsItem(
-                    title=data.get("title", item.title) or item.title,
-                    summary=data.get("summary", item.summary) or item.summary,
-                    url=item.url,
-                    source=item.source,
-                    published=item.published,
-                    why_it_matters=data.get("why_it_matters", "") or "",
-                ))
-            else:
-                new_items.append(item)
-
-        return NewsLevel(
-            level=level.level,
-            emoji=level.emoji,
-            label=level.label,
-            items=new_items,
-        )
+        return NewsLevel(level=level.level, emoji=level.emoji, label=level.label,
+                         items=_apply_enrichment(level.items, enriched))
     except Exception as exc:
-        logger.error("Gemini enrichment failed for level %s: %s", level.level, exc)
+        logger.error("Gemini enrichment failed for %s: %s", level.level, exc)
         return level
